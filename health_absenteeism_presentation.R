@@ -619,7 +619,7 @@ if(analysis) {
     mutate_at(vars(starts_with("n_")), funs(round(100 * . / n_students, 1)))
   
   tibble(
-    Metric = c("Immunizations", "Asthma", "FT Nurses", "ADHD", "Seizures", 
+    Metric = c("Immunizations", "Asthma", "Full-Time Nurses", "ADHD", "Seizures", 
                "Return-to-Class Rate", "Mental Health", "Severe Allergies",
                "Chronic Health Condition", "Diabetes"),
     Correlation = c(cor(cor_temp$pct_chronically_absent, cor_temp$n_students_receiving_immunizations, use = "complete.obs"),
@@ -630,7 +630,7 @@ if(analysis) {
                     cor(cor_temp$pct_chronically_absent, cor_temp$return_to_class_rate, use = "complete.obs"),
                     cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_mental_health_diagnosis, use = "complete.obs"),
                     cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_severe_allergies, use = "complete.obs"),
-                    cor(cor_temp$pct_chronically_absent, cor_temp$n_chronic_health_condition, , use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_chronic_health_condition, use = "complete.obs"),
                     cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_diabetes, use = "complete.obs"))
   ) %>% 
     mutate(Strength = case_when(
@@ -642,14 +642,14 @@ if(analysis) {
                   y = Correlation, label = round(Correlation, 2),
                   fill = factor(Strength, levels = c("Strong", "Moderate", "Weak")))) + 
     geom_bar(stat = "identity") + 
-    geom_label() +
+    geom_text() +
     theme_bw() +
     coord_flip() + 
     geom_hline(yintercept = 0) + 
     scale_fill_discrete(name = "Strength") + 
     scale_x_discrete(name = "Metric") +
     scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.25))
-  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_diabetes.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/correlations.png", 
          width = 9.17, height = 4.95, units = "in")
   
 } else {
