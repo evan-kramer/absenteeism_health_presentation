@@ -1,4 +1,4 @@
-# CCSSO Chronic Absenteeism Presentation
+# CCSSO Chronic Absenteeism Health Presentation
 # Evan Kramer
 # 4/6/2019
 
@@ -11,8 +11,8 @@ library(rgdal)
 setwd("N:/ORP_accountability/")
 
 # Switches 
-data = T
-analysis = F
+data = F
+analysis = T
 
 # Data
 if(data) {
@@ -152,7 +152,7 @@ if(analysis) {
     scale_y_continuous(name = "Number of Total Absences") +
     scale_fill_discrete(name = "Absence Type") + 
     ggtitle(str_c("Number of Absences by Grade and Type, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absences_by_grade_and_type.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absences_by_grade_and_type.png",
          units = "in", width = 9.17, height = 4.95)
   
   # Separate cut scores by grade
@@ -168,7 +168,7 @@ if(analysis) {
     scale_fill_discrete(name = "Pool") + 
     theme_bw() + 
     ggtitle(str_c("Absenteeism Rates by School, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/state_absentee_rates.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/state_absentee_rates.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Do excused/unexcused rates vary by demographics?
@@ -208,8 +208,8 @@ if(analysis) {
     scale_alpha_discrete(NULL, guide = F) + 
     coord_flip() +
     ggtitle(str_c("Percentage of Absences by Subgroup and Type, ", year(today()) - 1))
-  # ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absences_by_subgroup_and_type.png",
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absences_by_subgroup_and_type_highlighted.png",
+  # ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absences_by_subgroup_and_type.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absences_by_subgroup_and_type_highlighted.png",
          units = "in", width = 9.17, height = 4.95)
   
   # Minimum enrollment thresholds
@@ -246,7 +246,7 @@ if(analysis) {
     coord_flip() + 
     ggtitle(str_c("Absenteeism Rates by Enrollment Length, ", year(today()) - 1)) + 
     theme_bw() 
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rates_by_enrollment_length.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rates_by_enrollment_length.png",
          units = "in", width = 9.17, height = 4.95)    
   
   # Just two enrollment bins? 
@@ -266,7 +266,7 @@ if(analysis) {
     coord_flip() + 
     ggtitle(str_c("Absenteeism Rates by Enrollment Length, ", year(today()) - 1)) + 
     theme_bw() 
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rates_by_enrollment_length_2bin.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rates_by_enrollment_length_2bin.png",
          units = "in", width = 9.17, height = 4.95)
   
   # Students enrolled in multiple districts
@@ -333,7 +333,7 @@ if(analysis) {
     coord_map() + 
     ggtitle(str_c("Chronic Absenteeism Rates, ", unique(school$year))) + 
     theme(plot.title = element_text(hjust = 0.5))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absenteeism_geography_school.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absenteeism_geography_school.png",
          units = "in", width = 9.17, height = 4.95)
   ggplot(
     data = left_join(
@@ -360,10 +360,10 @@ if(analysis) {
     scale_fill_gradient(name = "Chronic Absence Rate", low = "#7fbf7b", high = "#af8dc3") +
     ggtitle(str_c("Chronic Absenteeism Rates, ", unique(district2$year))) + 
     theme(plot.title = element_text(hjust = 0.5))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absenteeism_geography_district.png",
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absenteeism_geography_district.png",
          units = "in", width = 9.17, height = 4.95)
   
-  # Predictive model
+  # Linear regression model
   model = lm(
     pct_chronically_absent ~ pct_ed, 
     data = filter(district2, grade_band == "All Grades" & subgroup == "All Students") %>% 
@@ -398,10 +398,33 @@ if(analysis) {
     scale_y_continuous(name = "Percent Chronically Absent") +
     scale_size_continuous(name = "Number of Students") + 
     ggtitle(str_c("District Chronic Absenteeism Rates as a Function of Poverty, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_poverty.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_poverty.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Absenteeism vs. poverty, school
+  ggplot(filter(school, grade == "All Grades" & subgroup == "All Students") %>% 
+           left_join(group_by(student, system, school, ED) %>% 
+                       summarize(n = n_distinct(student_id)) %>% 
+                       ungroup() %>% 
+                       group_by(system, school) %>%
+                       mutate(pct_ed = round(100 * n / sum(n, na.rm = T), 1)) %>% 
+                       filter(ED == 1) %>% 
+                       ungroup(), by = c("system", "school")), # %>% 
+           # mutate(residual = model$residuals,
+                  # system_name = # outliers
+                  # system_name = ifelse(percent_rank(abs(model$residuals)) >= .85, system_name, NA)),
+         aes(x = pct_ed, y = pct_10_pct_or_more, size = n.x)) + 
+    geom_point(alpha = 0.2) +
+    # geom_point(aes(alpha = !is.na(system_name))) + 
+    # geom_label(aes(label = system_name)) +
+    # geom_smooth(method = "lm", se = F) +
+    theme_bw() + 
+    scale_x_continuous(name = "Percent of Students in Poverty") + 
+    scale_y_continuous(name = "Percent Chronically Absent") +
+    scale_size_continuous(name = "Number of Students") + 
+    ggtitle(str_c("School Chronic Absenteeism Rates as a Function of Poverty, ", year(today()) - 1))
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_poverty_school.png", 
+         width = 9.17, height = 4.95, units = "in")
   
   # Find outliers
   
@@ -416,12 +439,12 @@ if(analysis) {
     ),
     aes(x = metric_abs, y = metric_ach)
   ) +
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Proficient") + 
     scale_x_continuous(name = "Percent Chronically Absent") +
     ggtitle(str_c("School-Level Proficiency as a Function of Chronic Absenteeism Rates, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_proficiency.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_proficiency.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Asthma
@@ -436,12 +459,12 @@ if(analysis) {
       y = pct_chronically_absent
     )
   ) + 
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Chronically Absent") + 
     scale_x_continuous(name = "Percent of Students with Asthma", limits = c(0, 100)) +
     ggtitle(str_c("Absenteeism Rates as a Function of Students with Asthma, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_asthma.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_asthma.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Return to class rates
@@ -456,12 +479,12 @@ if(analysis) {
       y = pct_chronically_absent
     )
   ) + 
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Chronically Absent") + 
     scale_x_continuous(name = "Return to Class Rate", limits = c(0, 100)) +
     ggtitle(str_c("Absenteeism Rates as a Function of Return-to-Class Rates, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_return_to_class.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_return_to_class.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Percent of schools with full-time nurse
@@ -482,12 +505,12 @@ if(analysis) {
       y = pct_chronically_absent
     )
   ) + 
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Chronically Absent") + 
     scale_x_continuous(name = "Percent of Schools with Full-Time Nurses", limits = c(0, 100)) +
     ggtitle(str_c("Absenteeism Rates as a Function of Nurse Availability, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_nurse_prevalence.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_nurse_prevalence.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Severe allergies
@@ -503,12 +526,12 @@ if(analysis) {
       y = pct_chronically_absent
     )
   ) + 
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Chronically Absent") + 
     scale_x_continuous(name = "Percent of Students with Severe Allergies", limits = c(0, 100)) +
     ggtitle(str_c("Absenteeism Rates as a Function of Severe Allergy Incidence, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_severe_allergies.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_severe_allergies.png", 
          width = 9.17, height = 4.95, units = "in")
   
   # Total chronic health conditions
@@ -524,15 +547,110 @@ if(analysis) {
       y = pct_chronically_absent
     )
   ) + 
-    geom_point(alpha = 0.2) + 
+    geom_point(alpha = 0.5) + 
     theme_bw() + 
     scale_y_continuous(name = "Percent Chronically Absent") + 
     scale_x_continuous(name = "Percent of Students with Chronic Health Conditions", limits = c(0, 100)) +
     ggtitle(str_c("Absenteeism Rates as a Function of Chronic Health Conditions, ", year(today()) - 1))
-  ggsave("projects/Evan/Projects/20190327 Chronic Absenteeism Presentation/Visualizations/absentee_rate_chronic_conditions.png", 
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_chronic_conditions.png", 
          width = 9.17, height = 4.95, units = "in")
   
-  # Salient features, proportionality of students enrolled less than 50%?
+  # Students receiving dental exams
+  ggplot(
+    inner_join(
+      transmute(survey, system = district_number, n_students_receiving_immunizations),
+      filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+        transmute(system, n_students, pct_chronically_absent),
+      by = "system"
+    ),
+    aes(
+      x = pmin(100, round(100 * n_students_receiving_immunizations / n_students, 1)),
+      y = pct_chronically_absent
+    )
+  ) + 
+    geom_point(alpha = 0.5) + 
+    theme_bw() + 
+    scale_y_continuous(name = "Percent Chronically Absent") + 
+    scale_x_continuous(name = "Percent of Students Receiving Immunizations", limits = c(0, 100)) +
+    ggtitle(str_c("Absenteeism Rates as a Function of Immunization Rates, ", year(today()) - 1))
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_immunizations.png", 
+         width = 9.17, height = 4.95, units = "in")
+  
+  # Students with diabetes
+  ggplot(
+    inner_join(
+      transmute(survey, system = district_number, n_students_with_diabetes),
+      filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+        transmute(system, n_students, pct_chronically_absent),
+      by = "system"
+    ),
+    aes(
+      x = pmin(100, round(100 * n_students_with_diabetes / n_students, 1)),
+      y = pct_chronically_absent
+    )
+  ) + 
+    geom_point(alpha = 0.5) + 
+    theme_bw() + 
+    scale_y_continuous(name = "Percent Chronically Absent") + 
+    scale_x_continuous(name = "Percent of Students with Diabetes", limits = c(0, 100)) +
+    ggtitle(str_c("Absenteeism Rates as a Function of Diabetes Prevalence, ", year(today()) - 1))
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_diabetes.png", 
+         width = 9.17, height = 4.95, units = "in")
+  
+  # Correlations
+  cor_temp = inner_join(
+    transmute(survey, 
+              system = district_number, 
+              n_students_receiving_immunizations,
+              n_students_with_asthma,
+              pct_schools_with_ft_nurse = round(100 * n_schools_with_ft_nurse / (n_schools_with_ft_nurse + n_schools_without_ft_nurse), 1),
+              n_students_with_adhd,
+              n_students_with_seizure_disorder,
+              return_to_class_rate,
+              n_students_with_mental_health_diagnosis,
+              n_students_with_severe_allergies,
+              n_chronic_health_condition,
+              n_students_receiving_immunizations,
+              n_students_with_diabetes),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+      transmute(system, n_students, pct_chronically_absent),
+    by = "system"
+  ) %>% 
+    mutate_at(vars(starts_with("n_")), funs(round(100 * . / n_students, 1)))
+  
+  tibble(
+    Metric = c("Immunizations", "Asthma", "FT Nurses", "ADHD", "Seizures", 
+               "Return-to-Class Rate", "Mental Health", "Severe Allergies",
+               "Chronic Health Condition", "Diabetes"),
+    Correlation = c(cor(cor_temp$pct_chronically_absent, cor_temp$n_students_receiving_immunizations, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_asthma, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$pct_schools_with_ft_nurse, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_adhd, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_seizure_disorder, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$return_to_class_rate, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_mental_health_diagnosis, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_severe_allergies, use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_chronic_health_condition, , use = "complete.obs"),
+                    cor(cor_temp$pct_chronically_absent, cor_temp$n_students_with_diabetes, use = "complete.obs"))
+  ) %>% 
+    mutate(Strength = case_when(
+      Correlation > 0.7 | Correlation < -0.7 ~ "Strong", 
+      between(Correlation, 0.31, 0.69) | between(Correlation, -0.69, -0.31) ~ "Moderate",
+      !is.na(Correlation) ~ "Weak" 
+    )) %>% 
+    ggplot(aes(Metric,
+                  y = Correlation, label = round(Correlation, 2),
+                  fill = factor(Strength, levels = c("Strong", "Moderate", "Weak")))) + 
+    geom_bar(stat = "identity") + 
+    geom_label() +
+    theme_bw() +
+    coord_flip() + 
+    geom_hline(yintercept = 0) + 
+    scale_fill_discrete(name = "Strength") + 
+    scale_x_discrete(name = "Metric") +
+    scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.25))
+  ggsave("projects/Evan/Projects/20190408  Absenteeism Health Presentation/Visualizations/absentee_rate_diabetes.png", 
+         width = 9.17, height = 4.95, units = "in")
   
 } else {
   rm(analysis)
