@@ -12,7 +12,8 @@ setwd("N:/ORP_accountability/")
 
 # Switches 
 data = F
-analysis = T
+analysis = F
+output = T
 
 # Data
 if(data) {
@@ -654,4 +655,21 @@ if(analysis) {
   
 } else {
   rm(analysis)
+}
+
+# Output 
+if(output) {
+  if(!"district" %in% ls()) {
+    print("You sure you have the data for this?")
+  } else {
+    # Initiate loop for plots
+    for(d in sort(unique(district$system))) {
+      # Reference RMD file
+      rmarkdown::render("projects/Evan/Projects/20190408  Absenteeism Health Presentation/knit_loop.Rmd",
+                        output_file = str_c(d, "_absenteeism_health_report.html"),
+                        output_dir = "projects/Evan/Projects/Data Requests/Output")
+    }
+  }
+} else {
+  rm(output)
 }

@@ -1,0 +1,251 @@
+```{r setup, include = F}
+options(java.parameters = "-Xmx16G")
+library(tidyverse)
+library(lubridate)
+library(haven)
+library(RJDBC)
+library(knitr)
+library(rmarkdown)
+setwd("N:/")
+
+```
+---
+title: "Absenteeism and Health Report"
+author: "Tennessee Department of Education"
+date: `r str_c(month(today(), label = T, abbr = F), " ", day(today()), ", ", year(today()))`
+output: html_document `r #change to pdf_document?`
+params:
+    d: `r d`
+---
+
+### Document Overview
+This document provides an overview of absenteeism and health data for `r unique(district2$system_name[district2$system == d])`.
+
+``` {r, echo = F, warning = F}
+# Chronic absenteeism generally
+ggplot(filter(district2, grade_band == "All Grades" & subgroup == "All Students") %>%
+         arrange(pct_chronically_absent) %>% 
+         mutate(system_name = ifelse(system == d, system_name, "Others"),
+                n = row_number()),
+       aes(y = pct_chronically_absent, x = n, alpha = system_name)) + 
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  scale_x_discrete(name = "") +
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  ggtitle("Chronic Absenteeism Rates")
+
+# Absenteeism vs. poverty
+ggplot(filter(district2, grade_band == "All Grades" & subgroup == "All Students") %>% 
+         left_join(group_by(student, system, ED) %>% 
+                     summarize(n = n_distinct(student_id)) %>% 
+                     ungroup() %>% 
+                     group_by(system) %>%
+                     mutate(pct_ed = round(100 * n / sum(n, na.rm = T), 1)) %>% 
+                     filter(ED == 1) %>% 
+                     ungroup(), by = "system") %>% 
+         mutate(system_name = ifelse(system == d, system_name, "Others")),
+       aes(x = pct_ed, y = pct_chronically_absent, alpha = system_name)) + 
+  geom_point() +
+  theme_bw() + 
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  scale_x_continuous(name = "Percent of Students in Poverty") + 
+  scale_y_continuous(name = "Percent Chronically Absent") +
+  ggtitle(str_c("District Chronic Absenteeism Rates as a Function of Poverty, ", year(today()) - 1))
+  
+# Absenteeism vs. poverty, school
+ggplot(filter(school, grade == "All Grades" & subgroup == "All Students") %>% 
+         left_join(group_by(student, system, school, ED) %>% 
+                     summarize(n = n_distinct(student_id)) %>% 
+                     ungroup() %>% 
+                     group_by(system, school) %>%
+                     mutate(pct_ed = round(100 * n / sum(n, na.rm = T), 1)) %>% 
+                     filter(ED == 1) %>% 
+                     ungroup(), by = c("system", "school")) %>% 
+         mutate(system_name = ifelse(system == d, system_name, "Others")), 
+       aes(x = pct_ed, y = pct_10_pct_or_more, alpha = system_name)) + 
+  geom_point(alpha = 0.7) +
+  theme_bw() + 
+  scale_x_continuous(name = "Percent of Students in Poverty") + 
+  scale_y_continuous(name = "Percent Chronically Absent") +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) + 
+  ggtitle(str_c("School Chronic Absenteeism Rates as a Function of Poverty, ", year(today()) - 1))
+
+# Absenteeism vs. proficiency
+ggplot(
+  inner_join(
+    filter(scores, subgroup == "All Students" & designation_ineligible == 0 & indicator == "Chronic Absenteeism") %>% 
+      transmute(system, school, pool, n_count_abs = n_count, metric_abs = metric),
+    filter(scores, subgroup == "All Students" & designation_ineligible == 0 & indicator == "Achievement") %>% 
+      transmute(system, system_name, school, pool, n_count_ach = n_count, metric_ach = metric),
+    by = c("system", "school", "pool")
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")), 
+  aes(x = metric_abs, y = metric_ach, alpha = system_name)
+) +
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Proficient") + 
+  scale_x_continuous(name = "Percent Chronically Absent") +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("School-Level Proficiency as a Function of Chronic Absenteeism Rates, ", year(today()) - 1))
+
+# Asthma
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, n_students_with_asthma),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades"),
+    by = "system"
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_students_with_asthma / n_students, 1)), 
+    y = pct_chronically_absent,
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Students with Asthma", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Students with Asthma, ", year(today()) - 1))
+  
+# Return to class rates
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, return_to_class_rate),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades"),
+    by = "system"
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(return_to_class_rate, 100),
+    y = pct_chronically_absent,
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Return to Class Rate", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Return-to-Class Rates, ", year(today()) - 1))
+
+# Percent of schools with full-time nurse
+ggplot(
+  group_by(scores, system) %>% 
+    summarize(n_schools = n_distinct(school)) %>% 
+    ungroup() %>% 
+    inner_join(
+      transmute(survey, system = district_number, n_schools_with_ft_nurse),
+      by = "system") %>% 
+    inner_join(
+      filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+        transmute(system, system_name, n_students, pct_chronically_absent),
+      by = "system"
+    ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_schools_with_ft_nurse / n_schools, 1)),
+    y = pct_chronically_absent,
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Schools with Full-Time Nurses", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Nurse Availability, ", year(today()) - 1))
+  
+# Severe allergies
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, n_students_with_severe_allergies),
+  filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+    transmute(system, system_name, n_students, pct_chronically_absent),
+  by = "system"
+) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_students_with_severe_allergies / n_students, 1)),
+    y = pct_chronically_absent,
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Students with Severe Allergies", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Severe Allergy Incidence, ", year(today()) - 1))
+  
+# Total chronic health conditions
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, n_chronic_health_condition),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+      transmute(system, system_name, n_students, pct_chronically_absent),
+    by = "system"
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_chronic_health_condition / n_students, 1)),
+    y = pct_chronically_absent,
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Students with Chronic Health Conditions", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Chronic Health Conditions, ", year(today()) - 1))
+  
+# Students receiving dental exams
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, n_students_receiving_immunizations),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+      transmute(system, system_name, n_students, pct_chronically_absent),
+    by = "system"
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_students_receiving_immunizations / n_students, 1)),
+    y = pct_chronically_absent, 
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Students Receiving Immunizations", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) + 
+  ggtitle(str_c("Absenteeism Rates as a Function of Immunization Rates, ", year(today()) - 1))
+
+# Students with diabetes
+ggplot(
+  inner_join(
+    transmute(survey, system = district_number, n_students_with_diabetes),
+    filter(district2, subgroup == "All Students" & grade_band == "All Grades") %>% 
+      transmute(system, system_name, n_students, pct_chronically_absent),
+    by = "system"
+  ) %>% 
+    mutate(system_name = ifelse(system == d, system_name, "Others")),
+  aes(
+    x = pmin(100, round(100 * n_students_with_diabetes / n_students, 1)),
+    y = pct_chronically_absent, 
+    alpha = system_name
+  )
+) + 
+  geom_point() + 
+  theme_bw() + 
+  scale_y_continuous(name = "Percent Chronically Absent") + 
+  scale_x_continuous(name = "Percent of Students with Diabetes", limits = c(0, 100)) +
+  scale_alpha_discrete(name = "", limits = c("Others", unique(district2$system_name[district2$system == d]))) +
+  ggtitle(str_c("Absenteeism Rates as a Function of Diabetes Prevalence, ", year(today()) - 1))
+  
+```
+
